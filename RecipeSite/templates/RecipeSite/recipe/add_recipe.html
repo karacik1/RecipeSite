@@ -1,0 +1,30 @@
+{% extends "RecipeSite/base.html" %}
+{% load static %}
+{% block title %}Новый рецепт{% endblock title %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'RecipeSite/css/add_recipe.css'%}">
+<div class="form_wrapper">
+    <div class="source_recipe">
+        <form  method="post">
+            {% csrf_token%}
+            <input type="url" name="url" placeholder="Ссылка на рецепт"><br>
+            <button type="submit" value="url_recipe" name="form_type">Сохранить рецепт</button>
+
+        </form>
+    </div>
+
+    <div class="users_recipe">
+
+        <form method="post" >
+            {% csrf_token%}
+            {% for input_form in form%}
+            {{ input_form }}<br>
+            {%endfor%}
+
+            <button type="submit" value="recipe" name="form_type">Сохранить рецепт</button>
+    </form>
+    </div>
+</div>
+
+{% endblock content %}

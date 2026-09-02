@@ -1,0 +1,48 @@
+/* СТИРАЕМ БАЗОВЫЕ СТИЛИ */
+
+* {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Правильный расчет ширины и высоты элементов */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Убираем стандартные точки у списков */
+ul, ol {
+  list-style: none;
+}
+
+/* Убираем подчеркивание у ссылок */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Делаем изображения адаптивными */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Наследуем шрифты для полей ввода и кнопок */
+input, button, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+}
+
+/* Убираем стандартные рамки и делаем кнопки кликабельными */
+button {
+  cursor: pointer;
+}
+
+/*---------------------------------------------------*/
+
+body {
+    background: cadetblue;
+}

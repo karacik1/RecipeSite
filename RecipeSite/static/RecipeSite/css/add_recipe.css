@@ -1,0 +1,28 @@
+.form_wrapper{
+    position: relative;
+    background: azure;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+.users_recipe, .source_recipe{
+    width: 40%;
+    min-height: 200px;
+    vertical-align: top;
+    margin: 0 auto;
+    border-radius: 20px;
+    flex: 1;
+}
+.source_recipe{
+    background: chartreuse;
+}
+.users_recipe{
+    background: indianred;
+}
+
+input{
+    border-style: solid;
+    border-width: 4px;
+    border-color: #0077B6;
+    background: #fffb89;
+}

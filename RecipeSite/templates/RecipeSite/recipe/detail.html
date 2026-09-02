@@ -1,0 +1,37 @@
+{% extends "RecipeSite/base.html" %}
+{% load static %}
+{% block title %}Рецепт{% endblock title %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'RecipeSite/css/detail.css'%}">
+<div class="recipe-wrapper">
+
+        <!-- ФОНОВЫЙ СЛОЙ (задник) -->
+    <div class="back">
+        <div class="sky"></div>        <!-- Небо -->
+        <div class="sea-back"><img src='{% static "RecipeSite/img/sea_icon.svg"%}' alt="sea"></div>   <!-- Море -->
+        <div class="ground"><img src='{% static "RecipeSite/img/ground_icon.svg"%}' alt="ground"></div>     <!-- Земля -->
+
+    </div>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ (поверх фона) -->
+    <div class="recipe-content">
+        <img class="recipe_icon" src='{% static "RecipeSite/img/test.png"%}' alt="test">
+        <p class="recipe_name">{{recipe_name}}</p>
+        <div class="ingredients">
+            {%for ingredient in ingredients_list %}
+            <input type="checkbox">{{ingredient}}<Br>
+            {%endfor%}
+        </div>
+        <div class="description">
+            {%for paragraph in description %}
+            <p>{{paragraph}}</p>
+            {%endfor%}
+        </div>
+        <div class="chest"><img src='{% static "RecipeSite/img/chest.png"%}' alt="chest"></div>
+        <a class="crab" href="{{url}}">
+            <img src="{% static 'RecipeSite/img/crab.png' %}" alt="rust">
+        </a>
+    </div>
+</div>
+{% endblock content %}

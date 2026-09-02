@@ -1,0 +1,149 @@
+
+/* ===== ОСНОВНОЙ КОНТЕЙНЕР ===== */
+.recipe-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    border-radius: 30px;
+    overflow: hidden;    /* Чтобы углы обрезались красиво */
+    min-height: 500px;   /* Минимальная высота, чтобы фон видно было */
+}
+
+/* ===== КОНТЕЙНЕР ФОНА ===== */
+.back {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    
+}
+
+/* ===== СЛОИ ФОНА ===== */
+.sky {
+    flex: 0 0 auto;
+    height: 200px;
+    background: linear-gradient(180deg, 
+        #5BC0EB 0%,      /* Ярко-голубой */
+        #87E0FF 50%,     /* Светло-голубой */
+        #B8E8FF 100%     /* Почти белый */
+    );
+}
+
+.sea-back {
+    flex: 1;
+    min-height: 200px;
+    background: linear-gradient(180deg, 
+        #00D2FF 0%,      /* Ярко-бирюзовый */
+        #00B4D8 40%,     /* Насыщенный сине-голубой */
+        #0096C7 70%,     /* Более темный */
+        #0077B6 100%     /* Глубокий синий */
+    );
+    
+}
+
+
+.ground {
+    flex: 0 0 auto;
+
+}
+.chest, .crab{
+    position: absolute;
+    z-index: 1;
+    max-width: 100px;
+    width: auto;
+    height: auto;
+    bottom: 10px;
+    pointer-events: auto;
+    cursor: pointer;      /* ← курсор-рука */
+    transition: transform 0.2s ease;
+}
+.chest {
+    right: 100px;
+}
+.crab {
+    left: 10px;
+
+    z-index: 1;
+
+}
+.crab:hover {
+    transform: scale(1.1) rotate(-5deg);
+}
+.crab img {
+    display: block;       /* убирает лишний отступ снизу */
+    width: 100%;
+    height: auto;
+}
+
+.crab a{
+    z-index: 999;
+    cursor: pointer;
+    pointer-events: auto;
+
+}
+/* ===== ОСНОВНОЙ КОНТЕНТ (поверх фона) ===== */
+.recipe-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 35px;
+    align-items: center;
+
+    z-index: 10;
+    padding-top: 100px;
+    padding-bottom: 200px;
+    min-height: 500px;
+    box-sizing: border-box;
+    
+
+
+}
+.ingredients, .description, .recipe_name{
+    background-color: #fffb89;
+    padding: 20px;
+    border-radius: 10px;
+    position:relative;
+    box-shadow:  12px 12px 2px 1px #0077B6;
+
+    
+    font-family:
+    Times,
+    Times New Roman,
+    Georgia,
+    serif;
+    font-size: large;
+
+
+}
+.recipe_icon {            /* ← НЕ ЗАБУДЬ ТОЧКУ! */
+    flex: 0 0 auto;
+
+    max-width: 200px;     /* ← максимальная ширина */
+    max-height: 200px;    /* ← максимальная высота */
+    width: auto;          /* ← чтобы сохранялись пропорции */
+    height: auto;         /* ← чтобы сохранялись пропорции */
+    border-radius: 10px;
+}
+.ingredients {
+    
+    flex: 1;
+    right: 25%;
+    padding: 20px;
+    min-width: 30%;
+}
+.recipe_name{ 
+    left: 10%;  
+}
+.description{
+    flex: 1 ;
+    
+    left: 10%;
+    width: 70%;
+}
