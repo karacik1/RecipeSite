@@ -41,17 +41,6 @@ def save_recipe(recipe, ) -> None:
     )
 
     # TODO: ингридиенты должны быть уже записаны в сет
-    ingredients = ingredients_set.objects.all()
-    # ingredients = recipe["ingredients"]
-    for ingr in ingredients:
-        RecipeIngredient.objects.create(
-            recipe = new_recipe,
-            ingredient_id = ingr.name,
-            amount = 1,
-            extra = 2,
-            raw_text = 3,
-
-        )
         # КОГДА СДЕЛАЮ НОРМАЛЬНЫЙ JSON
         # RecipeIngredient.objects.create(
         #     reciep = new_recipe,

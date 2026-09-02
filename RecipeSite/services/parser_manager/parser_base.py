@@ -42,31 +42,71 @@ class RecipeGet(ABC):
             self.cooking_time = self.normalize_time(self.cooking_time)
 
     @abstractmethod
-    def get_ingredients(self):
-        return
+    def get_ingredients(self) -> dict[str, str | int]:
+        """
+        :return: list состоящих из Dict: Словарь с рецептом, содержащий поля:
+                    - 'name' (str): Имя.
+                    - 'amount' (str): Количество.
+                    - 'unit' (str): Ед измерения.
+                    - 'extra' (str): То,что не получилось парсить (обычно дополние написанное к рецепту).
+                    - 'raw_text' (str): Оригинальный текст ингридиента.
+                    - 'position' (int): Позиция ингридиента в списке.
+        """
+        pass
 
-    def get_cooking_time(self):
-        return
+    def get_cooking_time(self) -> str:
+        """
+        :return: str - строка разного формата связанная со временем приготовления
+        """
+        pass
 
     @abstractmethod
-    def get_title(self):
-        return
+    def get_title(self)-> str:
+        """
+        :return: название ингридиента
+        """
+        pass
 
     @abstractmethod
-    def get_steps(self):
-        return
+    def get_steps(self) -> list[str]:
+        """
+        :return: list где каждый шаг - отдельно
+        """
+        pass
 
-    def get_img_url(self):
-        return
+    def get_img_url(self) -> str:
+        """
+        :return: возвращает url адрес картинки с оригинального рецепта
+        """
+        pass
 
     def _make_soup(self, original_URL):
+        """
+        :param original_URL: адресс сайта который будут парсить
+        :return: специальный обьект Soup который представляет полученный сайт, разбитый по тегам
+        """
         self.original_URL = original_URL
         site = requests.get(original_URL)
         soup = bs(site.text, "html.parser")
         soup.prettify()
         return soup
 
-    def get_recipe(self):
+    def get_recipe(self) -> dict[str, str | dict[str, str | int] | list[str]]:
+        """
+        return:
+            -'title' (str): Название рецепта.
+            -'cooking_time': Время приготовления.
+            -'img_url' (str): Ссыдка на изображение рецепта.
+            -'ingredients' (dict):
+                    'name' (str): Название ингридиента.
+                    'amount' (str): Количество.
+                    'unit' (str): Ед измерения.
+                    'extra' (str): То,что не получилось парсить (обычно дополние написанное к рецепту).
+                    'raw_text' (str): Оригинальный текст ингридиента.
+                    'position' (int): Позиция ингридиента в списке.
+            - 'steps' (list[str]): Шаги приготовления
+            - 'original_url' (str): Ссылка на оригинал рецепта.
+        """
         return {
             "title": self.title,
             "cooking_time": self.cooking_time,
@@ -75,8 +115,14 @@ class RecipeGet(ABC):
             "steps": self.steps,
             "original_URL": self.original_URL}
 
-    def normalize_time(self, time_string: str) -> str:
-
+    def normalize_time(self, time_string: str) -> str | None:
+        """
+        :param time_string: получает строку содержащаю время. Обрабатывает два вида :
+            1. Х дней Y часов Z минут
+            2. X:Y:Z
+        :return: строка формата 'X д. Y ч. Z мин.'
+        : raises ValueError: если строка имеет не обработанный тип
+        """
         normalizers = [RecipeGet._normalize_Days_Hours_Min, RecipeGet._normalize_DHM]
         for normalizer in normalizers:
             if result := normalizer(time_string):
@@ -96,13 +142,10 @@ class RecipeGet(ABC):
 
                 if parts:
                     return " ".join(parts)
-
-        print("\033[91mВремя имеет не обработанный формат\033[0m")
-        return time_string
+        raise ValueError("ДАННЫЙ ФОРМАТ ВРЕМЕНИ НЕ ПОДДЕРЖИВАЕТСЯ: ", time_string)
 
     @staticmethod
     def ingredient_normalize(ingredient: str, position: int) -> str | dict[str, str | int]:
-
         """получает строчку ингридиента, разюирает ее на части, нормализует имя и ед.изм"""
         parsed_ingredient = RecipeGet.ingredient_parse(ingredient, position)
         if not parsed_ingredient:
