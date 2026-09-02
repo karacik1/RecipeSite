@@ -246,7 +246,7 @@ def ingredient_parser(ingredient: str) -> dict[str, str] | None:
         }
     else: return None
 
-re= "="
+re= ""
 for row in formats_by_type:
     for i in formats_by_type[row]:
         print(ingredient_parser(i))
