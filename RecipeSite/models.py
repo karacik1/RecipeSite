@@ -50,3 +50,23 @@ class ParseredSites(models.Model):
 
     def __str__(self):
         return self.url
+
+class ingredients_set(models.Model):
+    """Хранит название ингридиентов в им.п"""
+    name = models.TextField(unique=True)
+
+    class Meta:
+        ordering = ("name",)
+        verbose_name = "Ингридиент"
+        verbose_name_plural = "Ингридиенты"
+    def __str__(self):
+        return self.name
+
+class ingredient_forms(models.Model):
+    """Хранит имя ингридиента в различных падежах,
+    имеет связку с общим список ингридиентов"""
+    ingredient_form =models.TextField(unique=True)
+    ingredient_correct_form = models.ForeignKey(ingredients_set, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.ingredient_form

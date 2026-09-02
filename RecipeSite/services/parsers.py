@@ -9,14 +9,18 @@ from venv import logger
 import requests
 from bs4 import BeautifulSoup as bs
 from abc import ABC, abstractmethod
-
-from RecipeSite.services.units_name import units_for_regex
+from RecipeSite import tests
+from RecipeSite.models import ingredients_set, ingredient_forms
+from RecipeSite.services.units_name import test, all_units
 
 
 class RecipeGet(ABC):
     # нормализаторы
     _normalize_Xdays_Yhours_Zmin = None
     _normalize_XYZ = None
+    _normalize_ingredient_name_set_table = None
+    _normalize_ingredient_name_form_table = None
+    _normalize_ingredient_name_pymorphy2 = None
 
     @abstractmethod
     def __init__(self, url):
@@ -92,6 +96,83 @@ class RecipeGet(ABC):
 
         print("\033[91mВремя имеет не обработанный формат\033[0m")
         return time_string
+    @staticmethod
+    def ingredient_normalize(ingredient: str) -> str:
+        """получает строчку ингридиента, разюирает ее на части, нормализует имя и ед.изм"""
+        parsed_ingredient = RecipeGet.ingredient_parse(ingredient)
+        if not parsed_ingredient:
+            return ingredient
+
+        normalized_ingredient = RecipeGet.normalize_ingredient_name_units(parsed_ingredient["name"],parsed_ingredient["unit"])
+        return normalized_ingredient
+
+    @staticmethod
+    def normalize_ingredient_name_units(ingredient_name: str | None = None, ingredient_unit: str | None = None) -> dict[str, str |None]:
+        """Нормализует название ингридиента и название ед.изм."""
+        normalizers = [RecipeGet._normalize_ingredient_name_set_table,
+                       RecipeGet._normalize_ingredient_name_form_table,
+                       RecipeGet.normalize_ingredient_name_pymorphy2]
+        for normalizer in normalizers:
+            if normalized_name := normalizer(ingredient_name):
+                break
+        else: normalized_name = "\033[32m НЕ УДАЛОСЬ НОРМАЛИЗОВАТЬ\033[0m"
+
+        normalized_unit = ingredient_unit
+        return {
+            "name": normalized_name,
+            "unit": normalized_unit
+        }
+    @staticmethod
+    def _normalize_ingredient_name_set_table(name: str) -> str | None:
+        """Проверяет является ли ингриидентв начюформе - ищет в таблице ingredients_set"""
+        if ingredients_set.objects.filter(name = name).exists():
+            return name
+        else: return None
+
+    @staticmethod
+    def _normalize_ingredient_name_form_table(name: str) -> str | None:
+        """Проверяет является ли ингриидентв начюформе - ищет в таблице ingredients_set"""
+        if ingredient_form := ingredient_forms.objects.filter(ingredient_form=name).first():
+            return str(ingredient_form.ingredient_correct_form)
+        else:
+            return None
+
+    def normalize_ingredient_name_pymorphy2(name: str) -> str:
+        """получает имя ингридиента, переводит в начальную форму, сохраняет в бд ингридиенти формы:"""
+        pass
+
+
+    @staticmethod
+    def ingredient_parse(ingredient: str) -> dict[str, str] | None:
+        """разбирает ингридиент на четыре части: название,еденицы измерения, количество, дополнение"""
+        pattern = re.compile(
+            pattern=re.compile(
+                rf'(?:(?P<qty_before>\d+[,./]\d+|\d+)\s*)?'
+                rf'(?:(?P<unit_before>{all_units})[-.\(+>:—=\s]*\b\s*)?'
+                rf'(?P<name>[-а-яё\s]+?(?=[-:—]*\s*\d|\s*(?:{all_units})\b|$))'
+                rf'(?:[-.(+>:—=\s]*(?P<qty_after>\d+[,./]\d+|\d+)?\s*)?'
+                rf'(?:(?P<unit_after>{all_units})\b)?'
+                rf'(?P<rest>.*)'
+            )
+        )
+
+        parsed_ingredient = pattern.fullmatch(ingredient.strip().lower())
+        if parsed_ingredient:
+            ingredients = parsed_ingredient.groupdict()
+
+            ingradient_count = str(ingredients["qty_before"] or ingredients["qty_after"] or "")
+            ingradient_unit = str(ingredients["unit_before"] or ingredients["unit_after"] or "")
+            addition = str(ingredients["rest"] or "")
+            ingradient_name = str(ingredients["name"] or "")
+            return {
+                "name": ingradient_name,
+                "count": ingradient_count,
+                "unit": ingradient_unit,
+
+                "addition": addition,
+            }
+        else:
+            return None
 
     @staticmethod
     def _normalize_XYZ(new_time: str) -> dict[str, int | None]:
@@ -201,52 +282,4 @@ class food_ru(RecipeGet):
         return url
 
 
-# если поподается срань типо сложно обработать программа должна просто вернуть как было записано
-formats_by_type = {
-    "с числами вконце": ["лука 2 шт", "мука 10гр", "молоко мл"],#
-    "с числами вначале": ["2 шт лука", "500 г муки", "200 мл молока"," шт лука"],#
-    "с дробями": ["1/2 стакана воды", "3/4 ч.л. соли",],
-    "с тире": ["морковь - 2 шт", "яйца — 3 шт", "сахар - 100 г"],
-    "с двоеточием": ["мука: 500 г", "молоко: 200 мл"],
-    "без единиц": ["соль по вкусу", "зелень для украшения", "перец"],
-    "с сокращениями": ["2 ст. л. масла", "1 ч. л. соды", "500 гр фарша"],
-    "без пробелов": ["2шт яйца - свежие", "500г муки", "1ст.л. масла"],
-    "special": ["картошка 2 шт. = 240 г", "банан - 400 г (2 шт.)", "мука - 20гр + 13гр на стол", "молоко мл","шт лука" ],
 
-}
-all_units = "|".join(map(re.escape, units_for_regex))+"\\.?"
-def ingredient_parser(ingredient: str) -> dict[str, str] | None:
-    """разбирает ингридиент на четыре части: название,еденицы измерения, количество, дополнение"""
-    pattern = re.compile(
-        pattern = re.compile(
-            rf'(?:(?P<qty_before>\d+[,./]\d+|\d+)\s*)?'
-            rf'(?:(?P<unit_before>{all_units})[-.\(+>:—=\s]*\b\s*)?'
-            rf'(?P<name>[-а-яё\s]+?(?=[-:—]*\s*\d|\s*(?:{all_units})\b|$))'
-            rf'(?:[-.(+>:—=\s]*(?P<qty_after>\d+[,./]\d+|\d+)?\s*)?'
-            rf'(?:(?P<unit_after>{all_units})\b)?'
-            rf'(?P<rest>.*)'
-        )
-    )
-
-    parsed_ingredient = pattern.fullmatch(ingredient.strip().lower())
-    if parsed_ingredient:
-        ingredients = parsed_ingredient.groupdict()
-
-        ingradient_count = str(ingredients["qty_before"] or ingredients["qty_after"] or "")
-        ingradient_unit = str(ingredients["unit_before"] or ingredients["unit_after"] or "")
-        addition = str(ingredients["rest"] or "")
-        ingradient_name = str(ingredients["name"] or "")
-        return ingredients
-        return {
-            "name": ingradient_name,
-            "count": ingradient_count,
-            "unit": ingradient_unit,
-
-            "addition": addition,
-        }
-    else: return None
-
-re= ""
-for row in formats_by_type:
-    for i in formats_by_type[row]:
-        print(ingredient_parser(i))
