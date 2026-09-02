@@ -49,23 +49,6 @@ def test(request):
 
         got_form(request.POST)
         print("Сервис отработал")
-        # form_type = request.POST.get('form_type')
-        #
-        # if form_type == 'recipe':
-        #     form = RecipeForm(request.POST)
-        #     if form.is_valid():
-        #         form.save()
-        #
-        #     else:
-        #         error="плохая форма"
-        # elif form_type == "url_recipe":
-        #     recipe_url = request.POST.get("url")
-        #     data = get_recipe_from_url(recipe_url)
-        #
-        #     return HttpResponse("Данные получены" + data)
-        # else:
-        #     print("ОШИБКА Полученняая странная форма не существует")
-
     form = RecipeForm()
     data={
         "form": form,
