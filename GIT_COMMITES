@@ -27,7 +27,7 @@ style	    Форматирование	                style: fix indentation
 perf	    Оптимизация	                    perf(parser): speed up search
 build	    Сборка, Docker	                build: add Dockerfile
 ci	        CI/CD	                        ci: add GitHub Actions
-revert	    Откат коммита	                revert: feat(parser)
+revert	    Откат коммита	                revert: feat(parser)0
 --------------------
 🔍 Область (в скобках)
 Необязательно, но помогает понять, где изменения.

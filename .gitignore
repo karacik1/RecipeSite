@@ -6,7 +6,20 @@ __pycache__/
 .idea
 
 settings.py
-db.sqlite3
 media/
 img
 *.log
+
+
+*.py[cod]
+.venv/
+*.sqlite3
+/media/
+/staticfiles/
+
+# IDE
+.idea/
+.vscode/
+
+# Секреты
+.env
