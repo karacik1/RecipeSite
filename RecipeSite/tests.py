@@ -18,5 +18,6 @@ class ParseFoodRu(TestCase):
 
     def test_get_active_users(self):
         url = "https://food.ru/recipes/182769-merengovyi-rulet-1691818518"
+        pprint(food_ru(url).get_recipe())
         get_recipe_by_url(url)
         pprint(Recipe.objects.all())

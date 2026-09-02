@@ -156,14 +156,20 @@ class RecipeGet(ABC):
 
     @staticmethod
     def normalize_ingredient_name(ingredient_name: str) -> str :
+        """
+        переводит разные формы ингридиента в нормальную, используя бд
+
+        :param ingredient_name: имя ингридиента
+        :return: пытается нормализовать ингридиент в соответствии с таблицей, иначе - возвращает то же
+        """
         normalizers = [RecipeGet._normalize_ingredient_name_set_table,
                        RecipeGet._normalize_ingredient_name_form_table,
-                       RecipeGet.normalize_ingredient_name_pymorphy2]
+                       ]
         for normalizer in normalizers:
             if normalized_name := normalizer(ingredient_name):
                 return normalized_name
         else:
-            raise ValueError("НЕ УДАЛОСЬ НОРМАЛИЗОВАТЬ ИМЯЖ ", ingredient_name)
+            return ingredient_name
 
 
     @staticmethod

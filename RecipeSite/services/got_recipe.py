@@ -39,17 +39,30 @@ def save_recipe(recipe, ) -> None:
         original_URL = recipe["original_URL"],
         recipe_img_url = recipe["img_url"]
     )
+    for ingredient in recipe["ingredients"]:
+        if ingredients_set.objects.filter(name=ingredient).exists():
+            ingredient_id = ingredients_set.objects.filter(name=ingredient)
+        else:
+            ingredient_id = None
 
-    # TODO: ингридиенты должны быть уже записаны в сет
-        # КОГДА СДЕЛАЮ НОРМАЛЬНЫЙ JSON
-        # RecipeIngredient.objects.create(
-        #     reciep = new_recipe,
-        #     ingredient = ingr,
-        #     amount = ingr["amount"],
-        #     extra = ingr["extra"],
-        #     raw_text = ingr["raw_text"],
-        #
-        # )
+        save_ingredient(ingredient, ingredient_id, new_recipe)
+
+def save_ingredient(ingredient, ingredient_id, recipe):
+    """
+    Сохраняет одну строку ингридиента
+    :param ingredient: нормализованное или ненормализованное(в случае если ингридиент не нашелся в таблице) название
+    :param ingredient_id: ссылка на нормализованную в форму в таблице set_ingredients, иначе - None.
+    :param recipe: ссылка на рецепт в базе данных
+    """
+    RecipeIngredient.objects.create(
+        recipe = recipe,
+        ingredient_id = ingredient_id,
+        name = ingredient["name"],
+        amount = ingredient["amount"],
+        unit = ingredient["unit"],
+        extra = ingredient["extra"],
+        raw_text = ingredient["raw_text"]
+    )
 
 def get_recipe_by_url(url: str) -> dict:
     """Принимает URL и возвращает рецепт в json"""

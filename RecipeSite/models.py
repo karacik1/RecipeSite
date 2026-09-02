@@ -1,3 +1,5 @@
+from asyncio.windows_events import NULL
+
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 from django.db import models
@@ -108,10 +110,12 @@ class Recipe(models.Model):
         return self.title
 
 class RecipeIngredient(models.Model):
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
-    ingredient_id = models.ForeignKey(ingredients_set, on_delete=models.CASCADE)
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name="recipe_ingredients")
+    # сделан ноль. смотреть в тудус
+    ingredient_id = models.ForeignKey(ingredients_set, on_delete=models.SET_NULL,blank=True, null=True)
     name = models.TextField(max_length=200)
-    amount = models.PositiveSmallIntegerField(null=True)
+    unit = models.TextField(max_length=100, blank=True, null=True)
+    amount = models.CharField(null=True, blank=True)
     extra = models.TextField(blank=True, max_length=200)
     raw_text = models.TextField()
 

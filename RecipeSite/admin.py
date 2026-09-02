@@ -54,8 +54,9 @@ class RecipeAdmin(admin.ModelAdmin):
     get_tags.short_description = 'Теги'
 
     def get_ingredients(self, obj):
-        return ", ".join([ingredient.name for ingredient in obj.ingredients.all()])
+        return ", ".join([ingredient.name for ingredient in obj.recipe_ingredients.all()])
     get_ingredients.short_description = 'Ингредиенты'
+
 @admin.register(IngredientSuggestion)
 class IngredientSuggestionAdmin(admin.ModelAdmin):
     list_display = ('ingredient_id', 'user', 'status', 'added_at', 'moderated_at')

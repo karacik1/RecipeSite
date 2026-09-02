@@ -48,6 +48,7 @@ class food_ru(RecipeGet):
     def get_ingredients(self):
         ingredients = []
         table = self.soup.find_all("tr", class_="ingredient")
+        # TODO: сделать что бы нормализация была в абстрактном
         for position, row in enumerate(table, 1):
             parsed_ingredient = RecipeGet.ingredient_normalize(" ".join(row.stripped_strings), position)
             ingredients.append(parsed_ingredient)
