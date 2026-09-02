@@ -87,6 +87,7 @@ class Recipe(models.Model):
         through="RecipeIngredient",
         related_name="recipies"
     )
+    recipe_img_url = models.URLField(blank=True)
     cooking_time = models.TextField(blank=True)
     description = models.TextField()
     created_at = models.DateField(auto_now_add=True)

@@ -29,7 +29,7 @@ def use_AI(url: str) -> bool | str:
 
 def save_recipe(recipe, ) -> None:
     """сохраняет рецепт в бд"""
-    # TODO: может можно сделать адекватнее присваивание. добавить img_url
+    # TODO: может можно сделать адекватнее присваивание. добавить img_url.
 
     new_recipe = Recipe.objects.create(
         title = recipe["title"],
@@ -37,7 +37,7 @@ def save_recipe(recipe, ) -> None:
         cooking_time = recipe["cooking_time"],
         description = recipe["steps"],
         original_URL = recipe["original_URL"],
-        # user = None,
+        recipe_img_url = recipe["img_url"]
     )
 
     # TODO: ингридиенты должны быть уже записаны в сет
@@ -60,14 +60,10 @@ def get_recipe_by_url(url: str) -> dict:
     elif parsed_site := is_site_parsed(url):
         parser = Parsers_list[parsed_site]
         recipe = parser(url).get_recipe()
-        print("im here", recipe)
         # TODO: хочу что бы человек имел возможность подредактирвоать
         #  рецепт под себя, а сохранялся оригинал и модифицированный как рецепт пользователя
 
         save_recipe(recipe )
-    else:
-        recipe = use_AI(url)
-        recipe = None
     print("ПОЛУЧЕННЫЙ РЕЦЕПТ:", recipe)
 
 

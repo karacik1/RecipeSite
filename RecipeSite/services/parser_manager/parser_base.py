@@ -8,9 +8,6 @@ import requests
 from bs4 import BeautifulSoup as bs
 
 from RecipeSite.models import ingredients_set, ingredient_forms
-# from RecipeSite.models import ingredients_set, ingredient_forms
-# from RecipeSite import tests
-# from RecipeSite.models import ingredients_set, ingredient_forms
 from RecipeSite.services.units_name import all_units
 
 
