@@ -1,0 +1,50 @@
+📋 Структура коммита
+text
+<тип>(<область>): <краткое описание>
+
+<тело: почему, а не что>
+
+<футер: Closes #42>
+Пример:
+--------------------
+text
+feat(models): add Tags and Ingredients tables
+
+Разделила теги и ингредиенты на отдельные таблицы,
+потому что они имеют разную структуру и логику.
+
+Closes #15
+-------------------
+🏷️ Типы коммитов
+Тип	        Когда использовать	            Пример
+feat	    Новая функциональность	        feat(parser): add time extraction
+fix	        Починил баг	fix(api):           handle missing field
+docs	    Документация	                docs(readme): add setup steps
+refactor	Переписал код (без новой фичи)	refactor(models): extract logic
+test	    Тесты	                        test(parser): add tests
+chore	    Рутина (зависимости, конфиги)	chore(deps): update Django
+style	    Форматирование	                style: fix indentation
+perf	    Оптимизация	                    perf(parser): speed up search
+build	    Сборка, Docker	                build: add Dockerfile
+ci	        CI/CD	                        ci: add GitHub Actions
+revert	    Откат коммита	                revert: feat(parser)
+--------------------
+🔍 Область (в скобках)
+Необязательно, но помогает понять, где изменения.
+
+Область	    Что затрагивает
+(models)	Модели Django
+(parser)	Парсер
+(api)	    API
+(admin)	    Админка
+(db)	    База данных
+(auth)	    Авторизация
+(ui)	    Интерфейс
+----------------------
+🔗 Ключевые слова для issue
+Слово	        Действие
+Closes #42	    Закроет issue #42
+Fixes #42	    Закроет issue #42
+Resolves #42	Закроет issue #42
+Refs #42	    Просто ссылка (не закроет)
+------------------------

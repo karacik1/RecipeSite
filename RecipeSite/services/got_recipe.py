@@ -3,7 +3,7 @@ from _pyrepl import console
 from urllib import request
 from django.shortcuts import get_object_or_404
 from unicodedata import category
-from RecipeSite.models import Category, Recipe, ParseredSites
+from RecipeSite.models import Category, Recipe, ParseredSites, ingredients_set, RecipeIngredient
 from RecipeSite.forms import RecipeForm
 from RecipeSite.services.parser_manager import parsers
 from RecipeSite.services.parser_manager.parsers import Parsers_list
@@ -27,18 +27,40 @@ def use_AI(url: str) -> bool | str:
     #TODO: нужна обработка url иишкой
     pass
 
-def save_recipe(new_recipe) -> None:
+def save_recipe(recipe, ) -> None:
     """сохраняет рецепт в бд"""
     # TODO: может можно сделать адекватнее присваивание. добавить img_url
 
-    Recipe.objects.create(
-        title = new_recipe["title"],
+    new_recipe = Recipe.objects.create(
+        title = recipe["title"],
         category = None,
-        cooking_time = new_recipe["cooking_time"],
-        description = new_recipe["steps"],
-        original_URL = new_recipe["original_URL"],
-        user = None,
+        cooking_time = recipe["cooking_time"],
+        description = recipe["steps"],
+        original_URL = recipe["original_URL"],
+        # user = None,
     )
+
+    # TODO: ингридиенты должны быть уже записаны в сет
+    ingredients = ingredients_set.objects.all()
+    # ingredients = recipe["ingredients"]
+    for ingr in ingredients:
+        RecipeIngredient.objects.create(
+            recipe = new_recipe,
+            ingredient_id = ingr.name,
+            amount = 1,
+            extra = 2,
+            raw_text = 3,
+
+        )
+        # КОГДА СДЕЛАЮ НОРМАЛЬНЫЙ JSON
+        # RecipeIngredient.objects.create(
+        #     reciep = new_recipe,
+        #     ingredient = ingr,
+        #     amount = ingr["amount"],
+        #     extra = ingr["extra"],
+        #     raw_text = ingr["raw_text"],
+        #
+        # )
 
 def get_recipe_by_url(url: str) -> dict:
     """Принимает URL и возвращает рецепт в json"""
@@ -53,7 +75,7 @@ def get_recipe_by_url(url: str) -> dict:
         # TODO: хочу что бы человек имел возможность подредактирвоать
         #  рецепт под себя, а сохранялся оригинал и модифицированный как рецепт пользователя
 
-        save_recipe(recipe)
+        save_recipe(recipe )
     else:
         recipe = use_AI(url)
         recipe = None

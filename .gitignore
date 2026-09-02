@@ -1,0 +1,12 @@
+venv/
+.pylintrc
+__pycache__/
+
+.vscode
+.idea
+
+settings.py
+db.sqlite3
+media/
+img
+*.log

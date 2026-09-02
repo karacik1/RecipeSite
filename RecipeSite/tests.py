@@ -1,4 +1,8 @@
+from pprint import pprint
+
 from django.test import TestCase
+
+from RecipeSite.services.parser_manager.parsers import food_ru
 
 
 # в сет молоко сахар
@@ -17,4 +21,6 @@ class TestUserServices(TestCase):
 
 
     def test_get_active_users(self):
-        pass
+        url = "https://food.ru/recipes/182769-merengovyi-rulet-1691818518"
+        recipe = food_ru(url).get_recipe()
+        pprint(recipe)

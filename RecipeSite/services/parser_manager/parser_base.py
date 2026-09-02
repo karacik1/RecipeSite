@@ -1,0 +1,273 @@
+import re
+from abc import ABC, abstractmethod
+from collections import namedtuple
+from urllib.robotparser import normalize
+
+import pymorphy3
+import requests
+from bs4 import BeautifulSoup as bs
+
+from RecipeSite.models import ingredients_set, ingredient_forms
+# from RecipeSite.models import ingredients_set, ingredient_forms
+# from RecipeSite import tests
+# from RecipeSite.models import ingredients_set, ingredient_forms
+from RecipeSite.services.units_name import all_units
+
+
+# from urllib.robotparser import normalize
+
+class RecipeGet(ABC):
+    # нормализаторы
+    _normalize_Days_Hours_Min = None
+    _normalize_DHM = None
+    _normalize_ingredient_name_set_table = None
+    _normalize_ingredient_name_form_table = None
+    _normalize_ingredient_name_pymorphy2 = None
+
+    @abstractmethod
+    def __init__(self, url):
+
+        self.soup = self._make_soup(url)
+
+        self.title = self.get_title()
+        self.img_url = self.get_img_url()
+        self.ingredients = self.get_ingredients()
+        self.cooking_time = self.get_cooking_time()
+        self.steps = self.get_steps()
+
+        self.normalizer()
+
+    def normalizer(self):
+        if self.cooking_time:
+            self.cooking_time = self.normalize_time(self.cooking_time)
+
+    @abstractmethod
+    def get_ingredients(self):
+        return
+
+    def get_cooking_time(self):
+        return
+
+    @abstractmethod
+    def get_title(self):
+        return
+
+    @abstractmethod
+    def get_steps(self):
+        return
+
+    def get_img_url(self):
+        return
+
+    def _make_soup(self, original_URL):
+        self.original_URL = original_URL
+        site = requests.get(original_URL)
+        soup = bs(site.text, "html.parser")
+        soup.prettify()
+        return soup
+
+    def get_recipe(self):
+        return {
+            "title": self.title,
+            "cooking_time": self.cooking_time,
+            "img_url": self.img_url,
+            "ingredients": self.ingredients,
+            "steps": self.steps,
+            "original_URL": self.original_URL}
+
+    def normalize_time(self, time_string: str) -> str:
+
+        normalizers = [RecipeGet._normalize_Days_Hours_Min, RecipeGet._normalize_DHM]
+        for normalizer in normalizers:
+            if result := normalizer(time_string):
+                parts = []
+
+                # Безопасно извлекаем значения
+                days = result.get("days", 0)
+                hours = result.get("hours", 0)
+                minutes = result.get("minutes", 0)
+
+                if days:
+                    parts.append(f"{days} д.")
+                if hours:
+                    parts.append(f"{hours} ч.")
+                if minutes:
+                    parts.append(f"{minutes} мин.")
+
+                if parts:
+                    return " ".join(parts)
+
+        print("\033[91mВремя имеет не обработанный формат\033[0m")
+        return time_string
+
+    @staticmethod
+    def ingredient_normalize(ingredient: str, position: int) -> str | dict[str, str | int]:
+
+        """получает строчку ингридиента, разюирает ее на части, нормализует имя и ед.изм"""
+        parsed_ingredient = RecipeGet.ingredient_parse(ingredient, position)
+        if not parsed_ingredient:
+            return ingredient
+
+        parsed_ingredient["name"]= RecipeGet.normalize_ingredient_name(str(parsed_ingredient["name"]))
+        parsed_ingredient["unit"] = RecipeGet.normalize_ingredient_unit(str(parsed_ingredient["unit"]))
+
+        return parsed_ingredient
+
+
+    @staticmethod
+    def normalize_ingredient_name(ingredient_name: str) -> str :
+        normalizers = [RecipeGet._normalize_ingredient_name_set_table,
+                       RecipeGet._normalize_ingredient_name_form_table,
+                       RecipeGet.normalize_ingredient_name_pymorphy2]
+        for normalizer in normalizers:
+            if normalized_name := normalizer(ingredient_name):
+                return normalized_name
+        else:
+            raise ValueError("НЕ УДАЛОСЬ НОРМАЛИЗОВАТЬ ИМЯЖ ", ingredient_name)
+
+
+    @staticmethod
+    def normalize_ingredient_unit(unit_name: str) -> str :
+        pass
+
+    @staticmethod
+    def _normalize_ingredient_name_set_table(name: str) -> str | None:
+        """Проверяет является ли ингриидентв начюформе - ищет в таблице ingredients_set"""
+        if ingredients_set.objects.filter(name = name).exists():
+            return name
+        else: return None
+
+    @staticmethod
+    def _normalize_ingredient_name_form_table(name: str) -> str | None:
+        """Проверяет является ли ингриидентв начюформе - ищет в таблице ingredients_set"""
+        if ingredient_form := ingredient_forms.objects.filter(ingredient_form=name).first():
+            return str(ingredient_form.ingredient_correct_form)
+        else:
+            return None
+
+    @staticmethod
+    def normalize_ingredient_name_pymorphy2(ingredient: str) -> list[str] | None:
+        # TODO: надо подумать что бы обьект создавался один раз. этого достаточно
+        # TODO: то что преобразуется по отдельности не всегда получается адекватно; 'белок', 'куриный', 'яйцо', 'raw_text': 'Белок куриного яйца
+        """получает имя ингридиента, переводит в начальную форму, сохраняет в бд ингридиенти формы:"""
+        morph = pymorphy3.MorphAnalyzer()
+        ingredient_words = re.split(r'\s-\s*|\s', ingredient)
+        normalized_ingredient = []
+        for word in ingredient_words:
+            p = morph.parse(word)
+            for variant in p:
+                # если выбранное слово: сущ, прилагательное полное или краткое
+                if "NOUN" in variant.tag or "ADJF" in variant.tag or "ADJS" in variant.tag:
+                    normalized_word = variant.normal_form
+                    normalized_ingredient.append(normalized_word)
+
+                    # сохраняет в бд предложений новый ингридиент
+                    RecipeGet.save_new_ingredient(variant)
+                    break
+        return normalized_ingredient
+
+
+    @staticmethod
+    def save_new_ingredient(ingredient) -> None:
+        """должен сохранять новый ингридиент в отдельную таблицу, в которой я бы уже одобряла новые ингридиенты"""
+        pass
+        # normalized_ingredient = ingredient.normal_form
+        # saved_ingredient = ingredients_set.objects.create(name=normalized_ingredient)
+        #
+        # for form in ingredient.lexeme:
+        #     word_form = form.word
+        #     if word_form != normalized_ingredient and not ingredient_forms.objects.filter(ingredient_form=word_form).exists():
+        #         ingredient_forms.objects.create(ingredient_form=word_form,
+        #                                         ingredient_correct_form=saved_ingredient)
+
+
+
+    @staticmethod
+    def ingredient_parse(ingredient: str, position: int) -> dict[str, str | int] | None:
+        """Создает словарь рецепта.
+
+            Returns:
+                Dict: Словарь с рецептом, содержащий поля:
+                    - 'name' (str): Имя.
+                    - 'amount' (str): Количество.
+                    - 'unit' (str): Ед измерения.
+                    - 'extra' (str): То,что не получилось парсить (обычно дополние написанное к рецепту).
+                    - 'raw_text' (str): Оригинальный текст ингридиента.
+                    - 'position' (int): Позиция ингридиента в списке.
+        """
+        pattern = re.compile(
+            # TODO: ошибки: ["Сливки 33% жирности","Лимонный сок 1 ч. л.","Малина 200 г", "кукурузный крахмал"]
+            pattern=re.compile(
+                rf'(?:(?P<qty_before>\d+[,./]\d+|\d+)\s*)?'
+                rf'(?:(?P<unit_before>{all_units})[-.\(+>:—=\s]*\b\s*)?'
+                rf'(?P<name>[-а-яё\s]+?(?=[-:—]*\s*\d|\s*(?:{all_units})\b|$))'
+                rf'(?:[-.(+>:—=\s]*(?P<qty_after>\d+[,./]\d+|\d+)?\s*)?'
+                rf'(?:(?P<unit_after>{all_units})\b)?'
+                rf'(?P<rest>.*)'
+            )
+        )
+
+        parsed_ingredient = pattern.fullmatch(ingredient.strip().lower())
+        if parsed_ingredient:
+
+            ingredients = parsed_ingredient.groupdict()
+
+            ingradient_amount = str(ingredients["qty_before"] or ingredients["qty_after"] or "")
+            ingradient_unit = str(ingredients["unit_before"] or ingredients["unit_after"] or "")
+            extra = str(ingredients["rest"] or "")
+            ingradient_name = str(ingredients["name"] or "")
+            return {
+                "name": ingradient_name,
+                "amount": ingradient_amount,
+                "unit": ingradient_unit,
+                "extra": extra,
+                "raw_text": ingredient,
+                "position": position,
+            }
+        else:
+            # TODO: решить чтото с тем если будет None
+            return None
+
+    @staticmethod
+    def _normalize_DHM(new_time: str) -> dict[str, int | None]:
+        """формат 'Days:Hours:Minutes', если удалось - возвращает словарик"""
+        time = {
+            "days": None,
+            "hours": None,
+            "minutes": None,
+        }
+
+        data_type = new_time.count(":")
+
+        match data_type:
+            case 0:
+                time["minutes"] = int(new_time)
+            case 1:
+                hour_minutes = re.search(r"(\d+)\s*:\s*(\d+)", new_time)
+                time["hours"] = int(hour_minutes.group(1))
+                time["minutes"] = int(hour_minutes.group(2))
+            case 3:
+                days_hour_minutes = re.search(r"(\d+)\s*:\s*(\d+):\s*(\d+)", new_time)
+                time["days"] = int(days_hour_minutes.group(1))
+                time["hours"] = int(days_hour_minutes.group(2))
+                time["minutes"] = int(days_hour_minutes.group(3))
+
+        return time
+
+    @staticmethod
+    def _normalize_Days_Hours_Min(new_time: str) -> dict[str, int | None]:
+        """формат 'X дни У часы Z минут', если удалось - возвращает словарик"""
+
+        days_re = re.search(r"(\d+)\s*(дней|день|д)", new_time)
+        hours_re = re.search(r"(\d+)\s*(часов|час|ч)", new_time)
+        minutes_re = re.search(r"(\d+)\s*(минут|мин|м|минута)", new_time)
+
+        days = int(days_re.group(1)) if days_re else None
+        hours = int(hours_re.group(1)) if hours_re else None
+        minutes = int(minutes_re.group(1)) if minutes_re else None
+
+        return {
+            "days": days,
+            "hours": hours,
+            "minutes": minutes,
+        }
