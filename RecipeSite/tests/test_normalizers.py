@@ -1,4 +1,5 @@
 from pprint import pprint
+from unittest import result
 
 from django.db.models import Model
 from django.test import TestCase
@@ -170,3 +171,31 @@ class ConvertTimeFromOver(TestCase):
         self.assertIsNone(result["hours"])
         
         self.assertIsNone(result["minutes"])
+class NormalizerDHMTests(TestCase):
+
+    def test_hours_minutes(self):
+        result = RecipeGet._normalize_DHM("12:20")
+        self.assertIsNone(result["days"])
+        self.assertEqual(result["hours"], 12)
+        self.assertEqual(result["minutes"], 20)
+
+    def test_only_minutes(self):
+        result = RecipeGet._normalize_DHM("12")
+        self.assertIsNone(result["days"])
+        self.assertIsNone(result["hours"])
+        self.assertEqual(result["minutes"], 12)
+
+
+    def test_hours_minutes_and_one_space(self):
+        result = RecipeGet._normalize_DHM("12: 20")
+        self.assertIsNone(result["days"])
+        self.assertEqual(result["hours"], 12)
+        self.assertEqual(result["minutes"], 20)
+
+    def test_hours_minutes_and_minus_sep(self):
+        result = RecipeGet._normalize_DHM("12-20")
+        self.assertIsNone(result["days"])
+        self.assertEqual(result["hours"], 12)
+        self.assertEqual(result["minutes"], 20)
+
+

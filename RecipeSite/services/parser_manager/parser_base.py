@@ -1,3 +1,4 @@
+import datetime
 import re
 from abc import ABC, abstractmethod
 from collections import namedtuple
@@ -6,11 +7,11 @@ from urllib.robotparser import normalize
 import pymorphy3
 import requests
 from bs4 import BeautifulSoup as bs
+from django.template.defaultfilters import date
 
 from RecipeSite.models import ingredients_set, ingredient_forms
 from RecipeSite.services.units_name import all_units
-
-
+from datetime import datetime
 # from urllib.robotparser import normalize
 
 class RecipeGet(ABC):
@@ -272,30 +273,26 @@ class RecipeGet(ABC):
             return None
 
     @staticmethod
-    def _normalize_DHM(new_time: str) -> dict[str, int | None]:
-        """формат 'Days:Hours:Minutes', если удалось - возвращает словарик"""
-        data = {
+    # TODO: убрать в минутах None вообще
+    def _normalize_DHM(new_time: str) -> dict[str, int | None] | None:
+        """Формат 'Hours:Minutes' или просто 'Minutes'."""
+        pattern = re.compile(
+            rf'(?:(?P<hours>\d*)?\s*[:-])?\s*(?P<minutes>\d+)'
+        )
+        match = pattern.match(new_time.strip())
+
+        if not match:
+            return None
+
+            # 2. Достаем данные из групп
+        data = match.groupdict()
+
+        # Предполагаем, что дней в этой строке изначально нет (всегда None)
+        return {
             "days": None,
-            "hours": None,
-            "minutes": None,
+            "hours":  int(data["hours"]) if data["hours"] else None,
+            "minutes":  int(data["minutes"]) if data["minutes"] else None,
         }
-
-        data_type = new_time.count(":")
-
-        match data_type:
-            case 0:
-                data["minutes"] = int(new_time)
-            case 1:
-                hour_minutes = re.search(r"(\d+)\s*:\s*(\d+)", new_time)
-                data["hours"] = int(hour_minutes.group(1))
-                data["minutes"] = int(hour_minutes.group(2))
-            case 3:
-                days_hour_minutes = re.search(r"(\d+)\s*:\s*(\d+):\s*(\d+)", new_time)
-                data["days"] = int(days_hour_minutes.group(1))
-                data["hours"] = int(days_hour_minutes.group(2))
-                data["minutes"] = int(days_hour_minutes.group(3))
-
-        return data
 
 
     @staticmethod
