@@ -304,9 +304,9 @@ class RecipeGet(ABC):
     def _normalize_Days_Hours_Min(new_time: str) -> dict[str, int | None]:
         """формат 'X дни У часы Z минут', если удалось - возвращает словарик"""
 
-        days_re = re.search(r"(\d+)\s*(дней|день|д)", new_time)
-        hours_re = re.search(r"(\d+)\s*(часов|час|ч)", new_time)
-        minutes_re = re.search(r"(\d+)\s*(минут|мин|м|минута)", new_time)
+        days_re = re.search(r"(\d+)\s*(дней|день|д)\b", new_time)
+        hours_re = re.search(r"(\d+)\s*(часов|час|ч)\b", new_time)
+        minutes_re = re.search(r"(\d+)\s*(минут|мин|м|минута)\b", new_time)
 
         days = int(days_re.group(1)) if days_re else None
         hours = int(hours_re.group(1)) if hours_re else None
