@@ -300,9 +300,14 @@ class RecipeGet(ABC):
 
         return time
 
+
     @staticmethod
     def _normalize_Days_Hours_Min(new_time: str) -> dict[str, int | None]:
         """формат 'X дни У часы Z минут', если удалось - возвращает словарик"""
+        new_time = new_time.strip()
+        if not new_time:
+            raise ValueError("Time text cannot be empty")
+
 
         days_re = re.search(r"(\d+)\s*(дней|день|д)\b", new_time)
         hours_re = re.search(r"(\d+)\s*(часов|час|ч)\b", new_time)
@@ -312,8 +317,40 @@ class RecipeGet(ABC):
         hours = int(hours_re.group(1)) if hours_re else None
         minutes = int(minutes_re.group(1)) if minutes_re else None
 
-        return {
+        result = {
             "days": days,
             "hours": hours,
             "minutes": minutes,
         }
+
+        result = RecipeGet.conver_to_normal_form(result)
+
+        return result
+
+    @staticmethod
+    def conver_to_normal_form(data: dict[str, int | None]) -> dict[str, int | None]:
+        """
+        конвертирует неправильне типы по виду 123ч часа, 67 минути тп.
+
+        :param data: словарь, содержащий "days","hours", "minutes"
+        :return: нормализованный словарь
+        """
+        if data["minutes"] is not None and data["minutes"]>=60:
+            if data["hours"] is not None:
+                data["hours"] += data["minutes"]//60
+            else:
+                data["hours"] = data["minutes"]//60
+
+            data["minutes"] %= 60
+            if data["minutes"] == 0:
+                data["minutes"] = None
+
+        if data["hours"] is not None and data["hours"] >=24:
+            if data["days"]  is not None:
+                data["days"] += data["hours"] // 24
+            else:
+                data["days"] = data["hours"] // 24
+            data["hours"] %= 24
+            if data["hours"] == 0:
+                data["hours"] = None
+        return data
