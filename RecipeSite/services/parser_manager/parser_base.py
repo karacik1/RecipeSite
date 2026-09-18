@@ -122,20 +122,17 @@ class RecipeGet(ABC):
         """
         normalizers = [RecipeGet._normalize_Days_Hours_Min, RecipeGet._normalize_DHM]
         for normalizer in normalizers:
-            if result := normalizer(time_string):
+            if data := normalizer(time_string):
+
+                result = RecipeGet.conver_to_normal_form(data)
                 parts = []
 
-                # Безопасно извлекаем значения
-                days = result.get("days", 0)
-                hours = result.get("hours", 0)
-                minutes = result.get("minutes", 0)
-
-                if days:
-                    parts.append(f"{days} д.")
-                if hours:
-                    parts.append(f"{hours} ч.")
-                if minutes:
-                    parts.append(f"{minutes} мин.")
+                if result["days"]:
+                    parts.append(f"{result["days"]} д.")
+                if result["hours"]:
+                    parts.append(f"{result["hours"]} ч.")
+                if result["minutes"]:
+                    parts.append(f"{result["minutes"]} мин.")
 
                 if parts:
                     return " ".join(parts)
@@ -277,7 +274,7 @@ class RecipeGet(ABC):
     @staticmethod
     def _normalize_DHM(new_time: str) -> dict[str, int | None]:
         """формат 'Days:Hours:Minutes', если удалось - возвращает словарик"""
-        time = {
+        data = {
             "days": None,
             "hours": None,
             "minutes": None,
@@ -287,18 +284,18 @@ class RecipeGet(ABC):
 
         match data_type:
             case 0:
-                time["minutes"] = int(new_time)
+                data["minutes"] = int(new_time)
             case 1:
                 hour_minutes = re.search(r"(\d+)\s*:\s*(\d+)", new_time)
-                time["hours"] = int(hour_minutes.group(1))
-                time["minutes"] = int(hour_minutes.group(2))
+                data["hours"] = int(hour_minutes.group(1))
+                data["minutes"] = int(hour_minutes.group(2))
             case 3:
                 days_hour_minutes = re.search(r"(\d+)\s*:\s*(\d+):\s*(\d+)", new_time)
-                time["days"] = int(days_hour_minutes.group(1))
-                time["hours"] = int(days_hour_minutes.group(2))
-                time["minutes"] = int(days_hour_minutes.group(3))
+                data["days"] = int(days_hour_minutes.group(1))
+                data["hours"] = int(days_hour_minutes.group(2))
+                data["minutes"] = int(days_hour_minutes.group(3))
 
-        return time
+        return data
 
 
     @staticmethod
@@ -323,7 +320,6 @@ class RecipeGet(ABC):
             "minutes": minutes,
         }
 
-        result = RecipeGet.conver_to_normal_form(result)
 
         return result
 
@@ -335,22 +331,27 @@ class RecipeGet(ABC):
         :param data: словарь, содержащий "days","hours", "minutes"
         :return: нормализованный словарь
         """
-        if data["minutes"] is not None and data["minutes"]>=60:
-            if data["hours"] is not None:
-                data["hours"] += data["minutes"]//60
-            else:
-                data["hours"] = data["minutes"]//60
+        result = dict(data)
 
-            data["minutes"] %= 60
-            if data["minutes"] == 0:
-                data["minutes"] = None
+        result["minutes"], result["hours"] = RecipeGet._carry_over(result["minutes"], result["hours"], 60)
 
-        if data["hours"] is not None and data["hours"] >=24:
-            if data["days"]  is not None:
-                data["days"] += data["hours"] // 24
-            else:
-                data["days"] = data["hours"] // 24
-            data["hours"] %= 24
-            if data["hours"] == 0:
-                data["hours"] = None
-        return data
+        result["hours"], result["days"] = RecipeGet._carry_over( result["hours"], result["days"],24)
+        return result
+
+    @staticmethod
+    def _carry_over(low_unit: int | None, high_unit: int | None, over_at: int | None):
+        if low_unit is None or low_unit < over_at:
+            return low_unit, high_unit
+
+        carry = low_unit // over_at
+
+        if high_unit is not None:
+            high_unit += carry
+        else:
+            high_unit = carry
+
+        low_unit %= over_at
+        if low_unit == 0:
+            low_unit = None
+
+        return low_unit, high_unit
