@@ -166,7 +166,7 @@ class ParseIngredientTest(TestCase):
 
     def test_parse_only_name(self):
         data = [
-            ['перец',
+            ['перецц',
              {'name': 'перец',
               'amount': "",
               'unit': "",
