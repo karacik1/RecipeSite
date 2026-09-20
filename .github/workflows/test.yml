@@ -1,34 +1,31 @@
 name: Run Tests
-
-# Когда запускать этот воркфлоу
 on:
   push:
-    branches: [ "main" ]   # при пуше в main
+    branches: [ "main", "features/**", "feature/**" ]
   pull_request:
-    branches: [ "main" ]   # и при создании pull request в main
+    branches: [ "main" ]   #while pull request в main
 
 jobs:
   test:
-    runs-on: ubuntu-latest   # GitHub предоставит виртуальную машину с Ubuntu
+    runs-on: ubuntu-latest   # GitHub Ubuntu
 
     steps:
-      # 1. Скачать твой код на эту машину
+      # 1. download cpode
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Установить Python
+      # 2. install Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'   # Можно указать '3.14' или '3.x' для последней версии
+          python-version: '3.12'
 
-      # 3. Установить зависимости из requirements.txt
+      # 3. requirements.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-django   # Если их нет в requirements.txt
 
-      # 4. Запустить тесты
       - name: Run pytest
         run: pytest
