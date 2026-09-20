@@ -1,17 +1,16 @@
-import datetime
 import re
 from abc import ABC, abstractmethod
-from collections import namedtuple
 from urllib.robotparser import normalize
 
 import pymorphy3
 import requests
 from bs4 import BeautifulSoup as bs
-from django.template.defaultfilters import date
 
 from RecipeSite.models import ingredients_set, ingredient_forms
+from RecipeSite.services.parser_manager.parse_ingredient import IngredientParser
 from RecipeSite.services.units_name import all_units
-from datetime import datetime
+
+
 # from urllib.robotparser import normalize
 
 class RecipeGet(ABC):
@@ -172,6 +171,7 @@ class RecipeGet(ABC):
 
     @staticmethod
     def normalize_ingredient_unit(unit_name: str) -> str :
+        # TODO: сделать нормализацию ед.изм
         pass
 
     @staticmethod
@@ -214,17 +214,8 @@ class RecipeGet(ABC):
     @staticmethod
     def save_new_ingredient(ingredient) -> None:
         """должен сохранять новый ингридиент в отдельную таблицу, в которой я бы уже одобряла новые ингридиенты"""
+        #  TODO: написать схранение ингридиентов в таблицу на одобрение
         pass
-        # normalized_ingredient = ingredient.normal_form
-        # saved_ingredient = ingredients_set.objects.create(name=normalized_ingredient)
-        #
-        # for form in ingredient.lexeme:
-        #     word_form = form.word
-        #     if word_form != normalized_ingredient and not ingredient_forms.objects.filter(ingredient_form=word_form).exists():
-        #         ingredient_forms.objects.create(ingredient_form=word_form,
-        #                                         ingredient_correct_form=saved_ingredient)
-
-
 
     @staticmethod
     def ingredient_parse(ingredient: str, position: int) -> dict[str, str | int] | None:
@@ -239,38 +230,12 @@ class RecipeGet(ABC):
                     - 'raw_text' (str): Оригинальный текст ингридиента.
                     - 'position' (int): Позиция ингридиента в списке.
         """
-        pattern = re.compile(
-            # TODO: ошибки: ["Сливки 33% жирности","Лимонный сок 1 ч. л.","Малина 200 г", "кукурузный крахмал"]
-            pattern=re.compile(
-                rf'(?:(?P<qty_before>\d+[,./]\d+|\d+)\s*)?'
-                rf'(?:(?P<unit_before>{all_units})[-.\(+>:—=\s]*\b\s*)?'
-                rf'(?P<name>[-а-яё\s]+?(?=[-:—]*\s*\d|\s*(?:{all_units})\b|$))'
-                rf'(?:[-.(+>:—=\s]*(?P<qty_after>\d+[,./]\d+|\d+)?\s*)?'
-                rf'(?:(?P<unit_after>{all_units})\b)?'
-                rf'(?P<rest>.*)'
-            )
-        )
-
-        parsed_ingredient = pattern.fullmatch(ingredient.strip().lower())
-        if parsed_ingredient:
-
-            ingredients = parsed_ingredient.groupdict()
-
-            ingradient_amount = str(ingredients["qty_before"] or ingredients["qty_after"] or "")
-            ingradient_unit = str(ingredients["unit_before"] or ingredients["unit_after"] or "")
-            extra = str(ingredients["rest"] or "")
-            ingradient_name = str(ingredients["name"] or "")
-            return {
-                "name": ingradient_name,
-                "amount": ingradient_amount,
-                "unit": ingradient_unit,
-                "extra": extra,
-                "raw_text": ingredient,
-                "position": position,
-            }
-        else:
-            # TODO: решить чтото с тем если будет None
-            return None
+        parser = IngredientParser()
+        result = parser.parse(ingredient)
+        if result:
+            result["position"] = position
+            return result
+        return None
 
     @staticmethod
     # TODO: убрать в минутах None вообще
@@ -284,7 +249,7 @@ class RecipeGet(ABC):
         if not match:
             return None
 
-            # 2. Достаем данные из групп
+        # 2. Достаем данные из групп
         data = match.groupdict()
 
         # Предполагаем, что дней в этой строке изначально нет (всегда None)
@@ -296,27 +261,40 @@ class RecipeGet(ABC):
 
 
     @staticmethod
-    def _normalize_Days_Hours_Min(new_time: str) -> dict[str, int | None]:
+    def _normalize_Days_Hours_Min(new_time: str) -> dict[str, int | None] | None:
         """формат 'X дни У часы Z минут', если удалось - возвращает словарик"""
+
+        # TODO: перевести в каждую функцию парсинга отдельно (времяБ имя и тп)
         new_time = new_time.strip()
         if not new_time:
             raise ValueError("Time text cannot be empty")
 
 
-        days_re = re.search(r"(\d+)\s*(дней|день|д)\b", new_time)
-        hours_re = re.search(r"(\d+)\s*(часов|час|ч)\b", new_time)
-        minutes_re = re.search(r"(\d+)\s*(минут|мин|м|минута)\b", new_time)
+        days_re = re.search(r"(?P<number>\d+)?\s*(?P<unit>дней|день|д)\b", new_time)
+        hours_re = re.search(r"(?P<number>\d+)?\s*(?P<unit>часов|час|ч)\b", new_time)
+        minutes_re = re.search(r"(?P<number>\d+)?\s*(?P<unit>минут|мин|м|минута)\b", new_time)
 
-        days = int(days_re.group(1)) if days_re else None
-        hours = int(hours_re.group(1)) if hours_re else None
-        minutes = int(minutes_re.group(1)) if minutes_re else None
+
+        def result_get(result, singular_form):
+            if not result:
+                return None
+
+            if result.group("unit") == singular_form:
+                    return 1
+            return int(result.group("number"))
+
 
         result = {
-            "days": days,
-            "hours": hours,
-            "minutes": minutes,
+            "days": result_get(days_re, "день"),
+            "hours": result_get(hours_re, "час"),
+            "minutes": result_get(minutes_re, "минута"),
         }
 
+        for i in result.values():
+            if i is not None:
+                break
+        else:
+            return None
 
         return result
 

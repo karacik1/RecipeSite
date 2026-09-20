@@ -1,17 +1,9 @@
-from pprint import pprint
-from unittest import result
-
-from django.db.models import Model
 from django.test import TestCase
 
-from RecipeSite.admin import ParsedSiteAdmin
-from RecipeSite.models import Recipe, ParseredSites
-from RecipeSite.services.got_recipe import get_recipe_by_url
 from RecipeSite.services.parser_manager.parser_base import RecipeGet
-from RecipeSite.services.parser_manager.parsers import food_ru
+
 
 class NormalizerTimeDaysHoursMinTests(TestCase):
-
     def test_parses_all_three_units_shortcut(self):
         result = RecipeGet._normalize_Days_Hours_Min("9 д. 5 ч. 12 м.")
         self.assertEqual(result["days"], 9)
@@ -23,7 +15,6 @@ class NormalizerTimeDaysHoursMinTests(TestCase):
         self.assertIsNone(result["days"])
         self.assertEqual(result["hours"], 5)
         self.assertIsNone(result["minutes"])
-
 
     def test_parses_all_three_units_without_space(self):
         result = RecipeGet._normalize_Days_Hours_Min("9дней 5часов 12минут")
@@ -90,7 +81,6 @@ class ConvertTimeFromOver(TestCase):
         self.assertEqual(result["days"], None)
         self.assertEqual(result["hours"], 3)
         self.assertEqual(result["minutes"], None)
-
 
         # edge test
         # конвертирование минут
