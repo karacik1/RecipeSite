@@ -1,6 +1,5 @@
 import re
 from abc import ABC, abstractmethod
-from urllib.robotparser import normalize
 
 import pymorphy3
 import requests
