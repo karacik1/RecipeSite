@@ -57,7 +57,7 @@ class RecipeGet(ABC):
         pass
 
     @abstractmethod
-    def get_title(self)-> str:
+    def get_title(self) -> str:
         """
         :return: название ингридиента
         """
@@ -144,14 +144,13 @@ class RecipeGet(ABC):
         if not parsed_ingredient:
             return ingredient
 
-        parsed_ingredient["name"]= RecipeGet.normalize_ingredient_name(str(parsed_ingredient["name"]))
+        parsed_ingredient["name"] = RecipeGet.normalize_ingredient_name(str(parsed_ingredient["name"]))
         parsed_ingredient["unit"] = RecipeGet.normalize_ingredient_unit(str(parsed_ingredient["unit"]))
 
         return parsed_ingredient
 
-
     @staticmethod
-    def normalize_ingredient_name(ingredient_name: str) -> str :
+    def normalize_ingredient_name(ingredient_name: str) -> str:
         """
         переводит разные формы ингридиента в нормальную, используя бд
 
@@ -165,20 +164,21 @@ class RecipeGet(ABC):
             if normalized_name := normalizer(ingredient_name):
                 return normalized_name
         else:
+            RecipeGet.save_new_ingredient(ingredient_name)
             return ingredient_name
 
-
     @staticmethod
-    def normalize_ingredient_unit(unit_name: str) -> str :
+    def normalize_ingredient_unit(unit_name: str) -> str:
         # TODO: сделать нормализацию ед.изм
         pass
 
     @staticmethod
     def _normalize_ingredient_name_set_table(name: str) -> str | None:
         """Проверяет является ли ингриидентв начюформе - ищет в таблице ingredients_set"""
-        if ingredients_set.objects.filter(name = name).exists():
+        if ingredients_set.objects.filter(name=name).exists():
             return name
-        else: return None
+        else:
+            return None
 
     @staticmethod
     def _normalize_ingredient_name_form_table(name: str) -> str | None:
@@ -189,31 +189,70 @@ class RecipeGet(ABC):
             return None
 
     @staticmethod
-    def normalize_ingredient_name_pymorphy2(ingredient: str) -> list[str] | None:
+    def get_normalized_ingredient_and_forms(ingredient: str) -> tuple[str, list[str]]:
         # TODO: надо подумать что бы обьект создавался один раз. этого достаточно
         # TODO: то что преобразуется по отдельности не всегда получается адекватно; 'белок', 'куриный', 'яйцо', 'raw_text': 'Белок куриного яйца
         """получает имя ингридиента, переводит в начальную форму, сохраняет в бд ингридиенти формы:"""
+        target_tags = [{'gent', 'sing'}, {'gent', 'plur'}]
+        base_tag = {'nomn', 'sing'}
+
+        ingredient_forms = []
+        normal_gramames = []
+        normal_form = []
         morph = pymorphy3.MorphAnalyzer()
         ingredient_words = re.split(r'\s-\s*|\s', ingredient)
-        normalized_ingredient = []
+        noun_gender = None
+        ingredient_form = []
+
         for word in ingredient_words:
-            p = morph.parse(word)
-            for variant in p:
-                # если выбранное слово: сущ, прилагательное полное или краткое
-                if "NOUN" in variant.tag or "ADJF" in variant.tag or "ADJS" in variant.tag:
-                    normalized_word = variant.normal_form
-                    normalized_ingredient.append(normalized_word)
+            parsed = morph.parse(word)[0]
+            if 'NOUN' in parsed.tag:
+                noun_gender = parsed.tag.gender
+                break
 
-                    # сохраняет в бд предложений новый ингридиент
-                    RecipeGet.save_new_ingredient(variant)
-                    break
-        return normalized_ingredient
+        for target_tag in target_tags:
+            current_tags = set(target_tag)
 
+            for word in ingredient_words:
+                ingredient_form = []
+                parsed = morph.parse(word)[0]
+                current_base = set(base_tag)
+
+                if ('ADJF' in parsed.tag) and noun_gender:
+                    current_base.add(noun_gender)
+                inflected = parsed.inflect(current_base)
+                normal_form.append(inflected.word if inflected else word)
+                normal_gramames.append(parsed.tag.POS)
+
+                if 'ADJF' in parsed.tag and 'sing' in current_tags and noun_gender:
+                    current_tags.add(noun_gender)
+
+                inflected = parsed.inflect(current_tags)
+
+                ingredient_form.append(inflected.word if inflected else word)
+            ingredient_forms.append(ingredient_form)
+        print(normal_form)
+        print(ingredient_forms)
+        if normal_gramames[0] == "ADJF" and normal_gramames[1] == "NOUN":
+            normal_form[0], normal_form[1] = normal_form[1], normal_form[0]
+
+        if len(normal_form) == 2 and ((normal_form[0] == "NOUN" and normal_form[1] == "ADJF") or (
+                normal_form[0] == "ADJF" and normal_form[1] == "NOUN")):
+            for ingr_index in range(len(ingredient_forms)):
+                reversed_ingredient = reversed(ingredient_forms[ingr_index])
+                ingredient_forms.append(" ".join(reversed_ingredient))
+                ingredient_forms[ingr_index] = " ".join(ingredient_forms[ingr_index])
+        else:
+            for ingr_index in range(len(ingredient_forms)):
+                ingredient_forms[ingr_index] = " ".join(ingredient_forms[ingr_index])
+
+        return " ".join(normal_form), set(tuple(item) for item in ingredient_forms)
 
     @staticmethod
     def save_new_ingredient(ingredient) -> None:
         """должен сохранять новый ингридиент в отдельную таблицу, в которой я бы уже одобряла новые ингридиенты"""
-        #  TODO: написать схранение ингридиентов в таблицу на одобрение
+
+        normal_form, new_ingredient_forms = RecipeGet.get_normalized_ingredient_and_forms(ingredient)
         pass
 
     @staticmethod
@@ -254,10 +293,9 @@ class RecipeGet(ABC):
         # Предполагаем, что дней в этой строке изначально нет (всегда None)
         return {
             "days": None,
-            "hours":  int(data["hours"]) if data["hours"] else None,
-            "minutes":  int(data["minutes"]) if data["minutes"] else None,
+            "hours": int(data["hours"]) if data["hours"] else None,
+            "minutes": int(data["minutes"]) if data["minutes"] else None,
         }
-
 
     @staticmethod
     def _normalize_Days_Hours_Min(new_time: str) -> dict[str, int | None] | None:
@@ -268,20 +306,17 @@ class RecipeGet(ABC):
         if not new_time:
             raise ValueError("Time text cannot be empty")
 
-
         days_re = re.search(r"(?P<number>\d+)?\s*(?P<unit>дней|день|д)\b", new_time)
         hours_re = re.search(r"(?P<number>\d+)?\s*(?P<unit>часов|час|ч)\b", new_time)
         minutes_re = re.search(r"(?P<number>\d+)?\s*(?P<unit>минут|мин|м|минута)\b", new_time)
-
 
         def result_get(result, singular_form):
             if not result:
                 return None
 
             if result.group("unit") == singular_form:
-                    return 1
+                return 1
             return int(result.group("number"))
-
 
         result = {
             "days": result_get(days_re, "день"),
@@ -309,7 +344,7 @@ class RecipeGet(ABC):
 
         result["minutes"], result["hours"] = RecipeGet._carry_over(result["minutes"], result["hours"], 60)
 
-        result["hours"], result["days"] = RecipeGet._carry_over( result["hours"], result["days"],24)
+        result["hours"], result["days"] = RecipeGet._carry_over(result["hours"], result["days"], 24)
         return result
 
     @staticmethod
@@ -329,3 +364,92 @@ class RecipeGet(ABC):
             low_unit = None
 
         return low_unit, high_unit
+
+
+class GetIngredientForms:
+    morph = pymorphy3.MorphAnalyzer()
+    target_tags = [{'gent', 'sing'}, {'gent', 'plur'}]
+    base_tag = {'nomn', 'sing'}
+
+    def __init__(self, ingredient):
+        self.ingredient_words = re.split(r'\s*-\s*|\s', ingredient)
+
+
+        self.noun_gender = None
+        self._need_reverse = False
+        self.normal_form = []
+        self.normal_grammes = []
+        self.ingredient_forms = []
+
+        self.get_noun_gender()
+        self.get_normal_form()  # здесь выставится _need_reverse
+        self.get_ingredient_forms()
+        self.if_abj_noun()  # добавит перевёрнутые варианты
+        self.normalise_forms()
+
+    def get_normal_and_form(self):
+        return " ".join(self.normal_form), set(self.ingredient_forms)
+
+    def get_noun_gender(self):
+        for word in self.ingredient_words:
+            parsed = GetIngredientForms.morph.parse(word)[0]
+            if 'NOUN' in parsed.tag:
+                self.noun_gender = parsed.tag.gender
+                break
+
+    def get_ingredient_forms(self):
+        for target_tag in GetIngredientForms.target_tags:
+
+            ingredient_form = []
+
+            for word in self.ingredient_words:
+                parsed = GetIngredientForms.morph.parse(word)[0]
+                current_tags = set(target_tag)
+
+                word_form, _ = self.get_form(parsed, current_tags, word)
+                ingredient_form.append(word_form)
+
+            self.ingredient_forms.append(ingredient_form)
+
+    def is_noun_abj(self):
+        # сработает и для "прил + сущ", и для "сущ + прил"
+        if len(self.normal_grammes) == 2 and \
+                {self.normal_grammes[0], self.normal_grammes[1]} == {"ADJF", "NOUN"}:
+            self._need_reverse = True
+
+    def get_normal_form(self):
+        current_base = set(self.base_tag)
+        for i, word in enumerate(self.ingredient_words):
+            parsed = GetIngredientForms.morph.parse(word)[0]
+            if 'ADJF' in parsed.tag and i > 0:
+                self.normal_form.append(word)
+                self.normal_grammes.append(parsed.tag.POS)
+            else:
+                normal_word, grammas = self.get_form(parsed, current_base, word)
+                self.normal_form.append(normal_word)
+                self.normal_grammes.append(grammas)
+        self.is_noun_abj()
+
+        if self._need_reverse and self.normal_grammes[0] == "ADJF":
+            self.normal_form[0], self.normal_form[1] = self.normal_form[1], self.normal_form[0]
+
+    def if_abj_noun(self):
+        if self._need_reverse:
+            self.ingredient_forms += [
+                [form[1], form[0]] for form in self.ingredient_forms
+            ]
+
+    def get_form(self, parsed, base, word):
+
+        if 'ADJF' in parsed.tag and 'sing' in base and self.noun_gender:
+            base.add(self.noun_gender)
+        inflected = parsed.inflect(base)
+        #
+        # self.normal_form.append(inflected.word if inflected else word)
+        grammas = parsed.tag.POS
+        return inflected.word if inflected else word, grammas
+
+    def normalise_forms(self):
+        for indr_index in range(len(self.ingredient_forms)):
+            self.ingredient_forms[indr_index] = " ".join(self.ingredient_forms[indr_index])
+

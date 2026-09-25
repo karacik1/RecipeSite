@@ -65,11 +65,12 @@ def save_ingredient(ingredient, ingredient_id, recipe):
     )
 
 def get_recipe_by_url(url: str) -> dict:
-    """Принимает URL и возвращает рецепт в json"""
+    """Принимает URL и возвращает рецепт в json. Проверяет есть ли в бд с рецептами и парпсится илкокнекретный рецепт"""
     # TODO: сделать адекватные вызовы
 
     if is_recipe_exists(url):
         recipe = Recipe.objects.filter(original_URL=url)
+
     elif parsed_site := is_site_parsed(url):
         parser = Parsers_list[parsed_site]
         recipe = parser(url).get_recipe()
@@ -77,6 +78,8 @@ def get_recipe_by_url(url: str) -> dict:
         #  рецепт под себя, а сохранялся оригинал и модифицированный как рецепт пользователя
 
         save_recipe(recipe )
+    else:
+        raise ValueError("Рецепт не найдет и не найден парсер")
     print("ПОЛУЧЕННЫЙ РЕЦЕПТ:", recipe)
 
 
