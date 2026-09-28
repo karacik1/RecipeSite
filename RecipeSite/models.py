@@ -1,10 +1,11 @@
+from datetime import timedelta
 
 
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 from django.db import models
 from django.urls import reverse
-from django.utils import choices
+from django.utils import choices, timezone
 
 
 class Category(models.Model):
@@ -111,7 +112,7 @@ class Recipe(models.Model):
 
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name="recipe_ingredients")
-    # сделан ноль. смотреть в тудус
+
     ingredient_id = models.ForeignKey(ingredients_set, on_delete=models.SET_NULL,blank=True, null=True)
     name = models.TextField(max_length=200)
     unit = models.TextField(max_length=100, blank=True, null=True)
@@ -124,6 +125,9 @@ class RecipeIngredient(models.Model):
     #     если вручную заполняется в админке. а там я не собираюсь сама заниматься этим
 
     position = models.PositiveSmallIntegerField(default=0)
+
+
+
     class Meta:
         ordering = ("position", )
         verbose_name = "Связь рецепта и ингредиента"
@@ -131,7 +135,16 @@ class RecipeIngredient(models.Model):
     def __str__(self):
         return f'{self.recipe}: {self.name}'
 
+class ActiveManager(models.Manager):
+    """Возвращает только неудалённые объекты."""
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
 
+
+class AllObjectsManager(models.Manager):
+    """Возвращает все объекты, включая удалённые."""
+    def get_queryset(self):
+        return super().get_queryset()
 
 class IngredientSuggestion(models.Model):
     """Таблица для модерации новых ингридиентов"""
@@ -147,6 +160,31 @@ class IngredientSuggestion(models.Model):
     status = models.CharField(max_length = 20, choices = STATUS_CHOICES, default="pending", verbose_name="Статус")
     added_at = models.DateField(auto_now_add=True)
     moderated_at = models.DateField(auto_now=True, null=True)
+
+    # 🗑️ Soft delete
+    is_deleted = models.BooleanField(default=False, verbose_name="Удалено")
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Дата удаления")
+
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
+
+    @property
+    def expires_at(self):
+        """Когда объект будет удалён окончательно."""
+        if self.deleted_at:
+            return self.deleted_at + timedelta(days=30)
+        return None
+
+    @property
+    def days_until_expiry(self):
+        """Сколько дней осталось до окончательного удаления."""
+        if not self.expires_at:
+            return None
+        delta = self.expires_at - timezone.now()
+        return max(0, delta.days)
+
+    def __str__(self):
+        return self.normal_form
     class Meta:
         ordering = ("-added_at", "moderated_at" )
         verbose_name = "Предложить ингридиент"

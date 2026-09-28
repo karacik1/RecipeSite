@@ -70,12 +70,20 @@ class SuggestNewIngredientFormsInline(admin.TabularInline):
 
 
 
+
+
 @admin.register(IngredientSuggestion)
 class IngredientSuggestionAdmin(admin.ModelAdmin):
-    actions = ['approve_selected']
+    actions = ['approve_selected', "reject_selected"]
     list_display = ('normal_form', 'user', 'status', 'added_at', 'moderated_at')
     list_editable = ('status',)
     inlines = [SuggestNewIngredientFormsInline]
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
 
     @admin.action(description="Одобрить выделенные ингридиенты")
     def  approve_selected(self, request, queryset):
@@ -85,6 +93,15 @@ class IngredientSuggestionAdmin(admin.ModelAdmin):
                     ingredient = ingredients_set.objects.create(name=obj.normal_form)
                     for form in obj.forms.all():
                         ingredient_forms.objects.create(ingredient_form = form.ingredient_form, ingredient_correct_form = ingredient)
+                    obj.delete()
+
+        self.message_user(request, "Готово!")
+
+    @admin.action(description="Отклонить выделенные ингридиенты")
+    def reject_selected(self, request, queryset):
+        with transaction.atomic():
+            for obj in queryset:
+                if obj.status == 'rejected':
                     obj.delete()
 
         self.message_user(request, "Готово!")
