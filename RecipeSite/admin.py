@@ -1,6 +1,9 @@
 from django.contrib import admin
+from django.db import transaction
+from django.http import HttpResponseRedirect
+
 from .models import Recipe, Category, ParseredSites, ingredients_set, ingredient_forms, Tag, SubTag, RecipeIngredient, \
-    IngredientSuggestion
+    IngredientSuggestion, SuggestNewIngredientForms
 
 
 @admin.register(Category)
@@ -57,12 +60,35 @@ class RecipeAdmin(admin.ModelAdmin):
         return ", ".join([ingredient.name for ingredient in obj.recipe_ingredients.all()])
     get_ingredients.short_description = 'Ингредиенты'
 
+
+class SuggestNewIngredientFormsInline(admin.TabularInline):
+    model = SuggestNewIngredientForms
+    extra = 1
+    fields = ('ingredient_form',)
+
+
+
+
+
 @admin.register(IngredientSuggestion)
 class IngredientSuggestionAdmin(admin.ModelAdmin):
-    list_display = ('normal_form',"get_forms", 'user', 'status', 'added_at', 'moderated_at')
+    actions = ['approve_selected']
+    list_display = ('normal_form', 'user', 'status', 'added_at', 'moderated_at')
+    list_editable = ('status',)
+    inlines = [SuggestNewIngredientFormsInline]
 
-    def get_forms(self, obj):
-        return ", ".join([f.ingredient_form for f in obj.forms.all()])
+    @admin.action(description="Одобрить выделенные ингридиенты")
+    def  approve_selected(self, request, queryset):
+        with transaction.atomic():
+            for obj in queryset:
+                if obj.status == 'accepted':
+                    ingredient = ingredients_set.objects.create(name=obj.normal_form)
+                    for form in obj.forms.all():
+                        ingredient_forms.objects.create(ingredient_form = form.ingredient_form, ingredient_correct_form = ingredient)
+                    obj.delete()
 
-    get_forms.short_description = "Формы"
+        self.message_user(request, "Готово!")
+
+
+
     

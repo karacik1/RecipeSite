@@ -157,6 +157,7 @@ class SuggestNewIngredientForms(models.Model):
     Например: """
     ingredient_form = models.CharField(max_length=200)
     suggestion = models.ForeignKey(IngredientSuggestion, on_delete=models.CASCADE, related_name="forms")
+
     class Meta:
         verbose_name = "Новая форма"
         verbose_name_plural = "Новые формы"
