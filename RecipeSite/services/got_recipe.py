@@ -27,7 +27,7 @@ def use_AI(url: str) -> bool | str:
     #TODO: нужна обработка url иишкой
     pass
 
-def save_recipe(recipe, ) -> None:
+def save_recipe(recipe, user) -> None:
     """сохраняет рецепт в бд"""
     # TODO: может можно сделать адекватнее присваивание. добавить img_url.
 
@@ -37,7 +37,8 @@ def save_recipe(recipe, ) -> None:
         cooking_time = recipe["cooking_time"],
         description = recipe["steps"],
         original_URL = recipe["original_URL"],
-        recipe_img_url = recipe["img_url"]
+        recipe_img_url = recipe["img_url"],
+        autor = user,
     )
     for ingredient in recipe["ingredients"]:
         if ingredients_set.objects.filter(name=ingredient).exists():
@@ -64,7 +65,7 @@ def save_ingredient(ingredient, ingredient_id, recipe):
         raw_text = ingredient["raw_text"]
     )
 
-def get_recipe_by_url(url: str) -> dict:
+def get_recipe_by_url(url: str, user) -> dict:
     """Принимает URL и возвращает рецепт в json. Проверяет есть ли в бд с рецептами и парпсится илкокнекретный рецепт"""
     # TODO: сделать адекватные вызовы
 
@@ -73,11 +74,11 @@ def get_recipe_by_url(url: str) -> dict:
 
     elif parsed_site := is_site_parsed(url):
         parser = Parsers_list[parsed_site]
-        recipe = parser(url).get_recipe()
+        recipe = parser(url, user).get_recipe()
         # TODO: хочу что бы человек имел возможность подредактирвоать
         #  рецепт под себя, а сохранялся оригинал и модифицированный как рецепт пользователя
 
-        save_recipe(recipe )
+        save_recipe(recipe, user )
     else:
         raise ValueError("Рецепт не найдет и не найден парсер")
     print("ПОЛУЧЕННЫЙ РЕЦЕПТ:", recipe)
@@ -94,9 +95,10 @@ def get_root_from_url(recipe_url: str) -> str:
     clean_url = recipe_url.split("/")[2]
     return clean_url
 
-def got_form(POST) -> None | str:
+def got_form(POST, user) -> None | str:
     """получает данные с формы и обрабатывет их, и только сохраняет в бд. может вернуть ошибку"""
     form_type = POST.get('form_type')
+
     if form_type == 'recipe':
         form = RecipeForm(POST)
         if form.is_valid():
@@ -107,7 +109,7 @@ def got_form(POST) -> None | str:
     elif form_type == "url_recipe":
         recipe_url = POST.get("url")
 
-        recipe = get_recipe_by_url(recipe_url)
+        recipe = get_recipe_by_url(recipe_url, user)
 
     else:
         return ("ОШИБКА Полученная форма не существует")

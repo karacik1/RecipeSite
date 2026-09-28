@@ -59,5 +59,10 @@ class RecipeAdmin(admin.ModelAdmin):
 
 @admin.register(IngredientSuggestion)
 class IngredientSuggestionAdmin(admin.ModelAdmin):
-    list_display = ('ingredient_id', 'user', 'status', 'added_at', 'moderated_at')
+    list_display = ('normal_form',"get_forms", 'user', 'status', 'added_at', 'moderated_at')
+
+    def get_forms(self, obj):
+        return ", ".join([f.ingredient_form for f in obj.forms.all()])
+
+    get_forms.short_description = "Формы"
     

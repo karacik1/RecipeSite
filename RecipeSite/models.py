@@ -131,13 +131,7 @@ class RecipeIngredient(models.Model):
     def __str__(self):
         return f'{self.recipe}: {self.name}'
 
-class SuggestNewIngredientForms(models.Model):
-    """Таблица для добавления новых форм значений к ингридиенту
-    Например: """
-    ingredient_form = models.CharField(max_length=200)
-    class Meta:
-        verbose_name = "Новая форма"
-        verbose_name_plural = "Новые формы"
+
 
 class IngredientSuggestion(models.Model):
     """Таблица для модерации новых ингридиентов"""
@@ -147,8 +141,8 @@ class IngredientSuggestion(models.Model):
         ("accepted", "разрешено"),
     ]
 
-    ingredient_id = models.TextField(max_length=200)
-    forms =  models.ForeignKey(SuggestNewIngredientForms, on_delete=models.CASCADE)
+    normal_form = models.TextField(max_length=200)
+
     user = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     status = models.CharField(max_length = 20, choices = STATUS_CHOICES, default="pending", verbose_name="Статус")
     added_at = models.DateField(auto_now_add=True)
@@ -157,5 +151,14 @@ class IngredientSuggestion(models.Model):
         ordering = ("-added_at", "moderated_at" )
         verbose_name = "Предложить ингридиент"
         verbose_name_plural = "Предложения ингридиентов"
+
+class SuggestNewIngredientForms(models.Model):
+    """Таблица для добавления новых форм значений к ингридиенту
+    Например: """
+    ingredient_form = models.CharField(max_length=200)
+    suggestion = models.ForeignKey(IngredientSuggestion, on_delete=models.CASCADE, related_name="forms")
+    class Meta:
+        verbose_name = "Новая форма"
+        verbose_name_plural = "Новые формы"
 
 

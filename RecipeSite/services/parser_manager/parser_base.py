@@ -4,8 +4,9 @@ from abc import ABC, abstractmethod
 import pymorphy3
 import requests
 from bs4 import BeautifulSoup as bs
+from django.db.models import Model
 
-from RecipeSite.models import ingredients_set, ingredient_forms
+from RecipeSite.models import ingredients_set, ingredient_forms, SuggestNewIngredientForms, IngredientSuggestion
 from RecipeSite.services.parser_manager.parse_ingredient import IngredientParser
 from RecipeSite.services.units_name import all_units
 
@@ -21,8 +22,8 @@ class RecipeGet(ABC):
     _normalize_ingredient_name_pymorphy2 = None
 
     @abstractmethod
-    def __init__(self, url):
-
+    def __init__(self, url, user):
+        self.user = user
         self.soup = self._make_soup(url)
 
         self.title = self.get_title()
@@ -137,20 +138,19 @@ class RecipeGet(ABC):
                     return " ".join(parts)
         raise ValueError("ДАННЫЙ ФОРМАТ ВРЕМЕНИ НЕ ПОДДЕРЖИВАЕТСЯ: ", time_string)
 
-    @staticmethod
-    def ingredient_normalize(ingredient: str, position: int) -> str | dict[str, str | int]:
+
+    def ingredient_normalize(self, ingredient: str, position: int) -> str | dict[str, str | int]:
         """получает строчку ингридиента, разюирает ее на части, нормализует имя и ед.изм"""
         parsed_ingredient = RecipeGet.ingredient_parse(ingredient, position)
         if not parsed_ingredient:
             return ingredient
 
-        parsed_ingredient["name"] = RecipeGet.normalize_ingredient_name(str(parsed_ingredient["name"]))
+        parsed_ingredient["name"] = self.normalize_ingredient_name(str(parsed_ingredient["name"]))
         parsed_ingredient["unit"] = RecipeGet.normalize_ingredient_unit(str(parsed_ingredient["unit"]))
 
         return parsed_ingredient
 
-    @staticmethod
-    def normalize_ingredient_name(ingredient_name: str) -> str:
+    def normalize_ingredient_name(self, ingredient_name: str) -> str:
         """
         переводит разные формы ингридиента в нормальную, используя бд
 
@@ -164,7 +164,7 @@ class RecipeGet(ABC):
             if normalized_name := normalizer(ingredient_name):
                 return normalized_name
         else:
-            RecipeGet.save_new_ingredient(ingredient_name)
+            self.save_new_ingredient(ingredient_name, self.user)
             return ingredient_name
 
     @staticmethod
@@ -249,11 +249,22 @@ class RecipeGet(ABC):
         return " ".join(normal_form), set(tuple(item) for item in ingredient_forms)
 
     @staticmethod
-    def save_new_ingredient(ingredient) -> None:
+    def save_new_ingredient(ingredient, user) -> None:
         """должен сохранять новый ингридиент в отдельную таблицу, в которой я бы уже одобряла новые ингридиенты"""
 
-        normal_form, new_ingredient_forms = RecipeGet.get_normalized_ingredient_and_forms(ingredient)
-        pass
+        normal_form, new_ingredient_forms = GetIngredientForms(ingredient).get_normal_and_form()
+
+        suggestion = IngredientSuggestion.objects.create(
+            normal_form=normal_form,  # или ingredient_name, если переименуете
+            status="pending",
+            user=user
+        )
+        for form in new_ingredient_forms:
+            SuggestNewIngredientForms.objects.create(
+                ingredient_form=form,
+                suggestion=suggestion,
+            )
+        return suggestion
 
     @staticmethod
     def ingredient_parse(ingredient: str, position: int) -> dict[str, str | int] | None:
@@ -374,7 +385,6 @@ class GetIngredientForms:
     def __init__(self, ingredient):
         self.ingredient_words = re.split(r'\s*-\s*|\s', ingredient)
 
-
         self.noun_gender = None
         self._need_reverse = False
         self.normal_form = []
@@ -452,4 +462,3 @@ class GetIngredientForms:
     def normalise_forms(self):
         for indr_index in range(len(self.ingredient_forms)):
             self.ingredient_forms[indr_index] = " ".join(self.ingredient_forms[indr_index])
-

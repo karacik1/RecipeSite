@@ -46,8 +46,8 @@ def detail_recipe(request):
 def test(request):
     error=""
     if request.method == "POST":
-
-        got_form(request.POST)
+        user = request.user
+        got_form(request.POST, user)
         print("Сервис отработал")
     form = RecipeForm()
     data={
