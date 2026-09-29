@@ -231,8 +231,7 @@ class RecipeGet(ABC):
 
                 ingredient_form.append(inflected.word if inflected else word)
             ingredient_forms.append(ingredient_form)
-        print(normal_form)
-        print(ingredient_forms)
+
         if normal_gramames[0] == "ADJF" and normal_gramames[1] == "NOUN":
             normal_form[0], normal_form[1] = normal_form[1], normal_form[0]
 
@@ -264,7 +263,7 @@ class RecipeGet(ABC):
                 ingredient_form=form,
                 suggestion=suggestion,
             )
-        return suggestion
+
 
     @staticmethod
     def ingredient_parse(ingredient: str, position: int) -> dict[str, str | int] | None:

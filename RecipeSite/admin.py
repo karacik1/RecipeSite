@@ -66,12 +66,6 @@ class SuggestNewIngredientFormsInline(admin.TabularInline):
     extra = 1
     fields = ('ingredient_form',)
 
-
-
-
-
-
-
 @admin.register(IngredientSuggestion)
 class IngredientSuggestionAdmin(admin.ModelAdmin):
     actions = ['approve_selected', "reject_selected"]
